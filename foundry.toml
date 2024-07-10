@@ -2,5 +2,13 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+remappings = [
+    "@ICTT/=lib/avalanche-interchain-token-transfer/contracts/",
+    "@openzeppelin/contracts@4.8.1/=lib/avalanche-interchain-token-transfer/contracts/lib/teleporter/contracts/lib/openzeppelin-contracts/contracts/",
+    "@avalabs/subnet-evm-contracts@1.2.0/=lib/avalanche-interchain-token-transfer/contracts/lib/teleporter/contracts/lib/subnet-evm/contracts/",
+    "@teleporter/=lib/avalanche-interchain-token-transfer/contracts/lib/teleporter/contracts/src/Teleporter/",
+    "@teleporter-mocks/=lib/avalanche-interchain-token-transfer/contracts/lib/teleporter/contracts/src/Mocks",
+]
+viaIR = true
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

@@ -1,66 +1,63 @@
-## Foundry
+# Avalanche Hack House 07/10/2024
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+## Project description
 
-Foundry consists of:
+Use of ITCC lib to build a vault on the destination chain to send tokens and retrieve them without all from the source chain.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+This project uses the `SendAndCall` function from the `IERC20TokenTransferrer.sol` interface.
 
-## Documentation
+## Vault contract
 
-https://book.getfoundry.sh/
+The vault contract implement the function from `IERC20SendAndCallReceiver.sol` interface to receive the message and then, depedending on the content of the message, deposit some tokens on itself or bridge some tokens back to the source chain.
 
-## Usage
+## Flow
 
-### Build
+First you need to start your network, create the subnets and deploy them. For that, I used the `avalanche cli`:
 
-```shell
-$ forge build
+```bash
+avalanche network start
+avalanche subnet create sourceSubnet
+avalanche subnet create destinationSubnet
 ```
 
-### Test
+![Subnet List](subnetsList.png)
 
-```shell
-$ forge test
+Then you need to deploy the ERC20 token and the bridges:
+
+```bash
+forge create --rpc-url $SRC_CHAIN_RPC --private-key $EWOQ_PRIV_KEY src/RandomToken.sol:RandomToken --json
 ```
 
-### Format
+```bash
+forge script --rpc-url "$SRC_CHAIN_RPC" \
+  --private-key "$EWOQ_PRIV_KEY" \
+  script/DeployERC20TokenHome.s.sol:DeployERC20TokenHome \
+  --broadcast --skip-simulation
 
-```shell
-$ forge fmt
+forge script --rpc-url "$DEST_CHAIN_RPC" \
+  --private-key "$EWOQ_PRIV_KEY" \
+  script/DeployERC20TokenRemote.s.sol:DeployERC20TokenRemote \
+  --broadcast --skip-simulation
 ```
 
-### Gas Snapshots
+Then you can call the `sendAndCall` function from the source chain:
 
-```shell
-$ forge snapshot
+```bash
+cast send --rpc-url "$SRC_CHAIN_RPC" --json \
+  --private-key "$EWOQ_PRIV_KEY" \
+  "$BRIDGE_HOME" \
+  'send((bytes32,address,address,bytes,uint256,uint256,address,address,address,uint256,uint256),uint256)' \
+  "($DEST_CHAIN_ID,$BRIDGE_REMOTE,$VAULT_REMOTE,$PAYLOAD,$REQ_GAS_LIMIT,$REC_GAS_LIMIT,$MULTIHOP_FALLBACK,$FALLBACK_REC,$PRIMARY_FEE_TOKEN,0,0)" "10000000000000000000"
 ```
 
-### Anvil
+You need to abi-encode the $PAYLOAD. For that, you can go to this (site)[https://abi.hashex.org/]. The parameters are as follow:
 
-```shell
-$ anvil
+```bash
+address senderAddress,
+uint256 tokenAmount,
+bool addToMapping
 ```
 
-### Deploy
+The boolean variable, if true, tells the vault to add the tokens to the mapping and, if false, tells the vault to bridge back the tokens.
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+Note that this is not secured because anyone with your address could retrieve your tokens locked in the vault.
